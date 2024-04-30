@@ -6,12 +6,12 @@ mod hash_functions;
 use hash_functions::hashers::{sha2_256, sha3_256};
 use serde;
 use std::{collections::BTreeMap, sync::Mutex};
-use tauri::Manager;
+use tauri::{Manager, State};
 
 #[allow(dead_code)]
 #[derive(Debug)]
 struct Counter {
-    count: Mutex<u32>,
+    count: Mutex<i32>,
 }
 
 /// Structure for sending and receiving events.
@@ -63,14 +63,14 @@ fn main() {
             let _id = app.listen_global("hash_text", move |event_handler| {
                 let event_payload: HashText =
                     serde_json::from_str(event_handler.payload().unwrap()).unwrap();
-                    
+
                 println!("Got event from JS\nPayload: {:?}\n", event_payload);
                 let hash_result = functions_map.get(&event_payload.function_type).unwrap()(
                     &event_payload.text.as_bytes(),
                 );
 
                 println!("hash_result: {hash_result:?}\n",); // hash_result
-                // Emit result event to JS
+                                                             // Emit result event to JS
                 handle
                     .emit_all(
                         "hash_result",
@@ -83,7 +83,35 @@ fn main() {
             });
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![sha2_256, sha3_256])
+        .invoke_handler(tauri::generate_handler![
+            sha2_256,
+            sha3_256,
+            get_count,
+            increment_count,
+            decrement_count
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[tauri::command]
+fn get_count(counter: State<Counter>) -> i32 {
+    println!("⦁ Count Value - GET: {:?}", *counter.count.lock().unwrap());
+    *counter.count.lock().unwrap()
+}
+
+#[tauri::command]
+fn increment_count(counter: State<Counter>) -> i32 {
+    println!("+ Count Value Before: {:?}", *counter.count.lock().unwrap());
+    *counter.count.lock().unwrap() += 8;
+    println!("+ Count Value After: {:?}", *counter.count.lock().unwrap());
+    *counter.count.lock().unwrap()
+}
+
+#[tauri::command]
+fn decrement_count(counter: State<Counter>) -> i32 {
+    println!("- Count Value Before: {:?}", *counter.count.lock().unwrap());
+    *counter.count.lock().unwrap() -= 8;
+    println!("- Count Value After: {:?}", *counter.count.lock().unwrap());
+    *counter.count.lock().unwrap()
 }

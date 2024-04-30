@@ -2,6 +2,7 @@
 	import '../app.css';
 	// Supports weights 100-900
 	import '@fontsource-variable/dm-sans';
+	import { onMount } from 'svelte';
 	import { invoke } from '@tauri-apps/api/tauri';
 	import { emit, listen } from '@tauri-apps/api/event';
 
@@ -11,11 +12,28 @@
 	};
 
 	// Initialize variables for state management
+	let count: number;
 	let textToHash: string = '';
 	let result: string = '';
 	let autoUpdateHash: boolean = false;
 	let hashingAlgo: string = 'sha2_256';
 
+	onMount(async () => {
+		count = await invoke('get_count');
+		console.log(count);
+	});
+
+	async function incrementCount() {
+		count = await invoke('increment_count');
+		console.log(count);
+	}
+
+	async function decrementCount() {
+		count = await invoke('decrement_count');
+		console.log(count);
+	}
+
+	// IPC Event Listener
 	listen('hash_result', (event) => {
 		let payload: HashText = event.payload as HashText;
 		result = payload.text;
@@ -41,6 +59,13 @@
 	<!-- <slot /> -->
 	<h2 class="text-2xl font-bold py-4 text-center">Hasher</h2>
 	<h3 class="text-xl font-semibold mb-2 text-center">Try out different hashing algorithms!</h3>
+
+	<div class="flex space-x-4">
+		<p>Count</p>
+		<button class="border px-2 py-0.5 rounded" on:click={incrementCount}>+</button>
+		<p>{count}</p>
+		<button class="border px-2 py-0.5 rounded" on:click={decrementCount}>-</button>
+	</div>
 
 	<div class="flex border-0 rounded-md shadow gap-8 h-[460px] max-h-[460px]">
 		<section class="border w-2/3 rounded-md px-4 py-2 border-zinc-700">
